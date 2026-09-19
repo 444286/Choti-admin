@@ -815,7 +815,7 @@
           headers: { 'x-admin-token': token }
         });
         story = await res.json();
-        tags = story.tags || [];
+        tags = [];
       } catch (e) {}
     }
 
@@ -846,18 +846,12 @@
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group">
-            <label>বিভাগ (একাধিক বাছাই করুন)</label>
-            <select id="fCats" multiple style="height: 110px;">
+          <div class="form-group form-full">
+            <label>🏷️ ট্যাগ / বিভাগ (একাধিক বাছাই করুন)</label>
+            <select id="fCats" multiple style="height: 140px;">
               ${catOptions}
             </select>
-          </div>
-          <div class="form-group">
-            <label>ট্যাগ (Enter চাপুন)</label>
-            <div class="tags-input-wrap" onclick="document.getElementById('tagInput').focus()">
-              <div id="tagChips"></div>
-              <input type="text" class="tags-input" id="tagInput" placeholder="ট্যাগ লিখুন..." onkeydown="addTag(event)" />
-            </div>
+            <div style="font-size:12px;color:var(--text-light);margin-top:6px;">এখানে যেগুলো select করবেন, সেগুলোই Home ও গল্পের ভিতরে ট্যাগ হিসেবে দেখাবে। কোনো টেক্সট ট্যাগ আলাদা করে লিখতে হবে না।</div>
           </div>
         </div>
         <div class="form-row">
@@ -896,10 +890,6 @@
       </div>
     `;
 
-    // Render existing tags
-    if (story && story.tags) {
-      story.tags.forEach(t => renderTag(t));
-    }
   }
 
   function addTag(e) {
@@ -951,7 +941,7 @@
     fd.append('author', document.getElementById('fAuthor').value || 'অজ্ঞাত');
     fd.append('content', content);
     fd.append('categories', JSON.stringify(selCats));
-    fd.append('tags', JSON.stringify(tags));
+    fd.append('tags', JSON.stringify([]));
     fd.append('isHot', document.getElementById('fIsHot').checked);
     fd.append('isNew', document.getElementById('fIsNew').checked);
     fd.append('status', document.getElementById('fStatus').value);
