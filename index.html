@@ -584,7 +584,7 @@
 </div>
 
 <script>
-  const API = '';
+  const API = 'https://choti.onrender.com';
   let token = '';
   let adminPage = 'dashboard';
   let storyPage = 1;
@@ -592,53 +592,6 @@
   let editingId = null;
   let tags = [];
   let cats = [];
-
-  // ===== CATEGORY DISPLAY NAMES =====
-  const CATEGORY_NAME_MAP = {
-    'ojachar': 'অজাচার বাংলা চটি গল্প',
-    'kajer-mashi': 'কাজের মাসি চোদার গল্প',
-    'kajer-meye': 'কাজের মেয়ে চোদার গল্প',
-    'kumari-meye': 'কুমারী মেয়ে চোদার গল্প',
-    'grihobodhu': 'গৃহবধূ চোদন কাহিনী',
-    'gay': 'গে সেক্স চটি',
-    'gram-sex': 'গ্রাম সেক্সের বাংলা চটি গল্প',
-    'porkiya': 'পরকীয়া বাংলা চটি গল্প',
-    'mature': 'পরিপক্ক চোদাচুদি গল্প',
-    'protibeshi': 'প্রতিবেশী চোদার চটি গল্প',
-    'famous': 'ফেমাস বাংলা চটি গল্প',
-    'babaji': 'বাবাজী চোদার বাংলা চটি গল্প',
-    'somokami': 'সমকামী বাংলা চটি গল্প',
-    'best': 'সেরা বাংলা চটি',
-    'student': 'স্টুডেন্ট বাংলা চটি গল্প',
-    'swami-stri': 'স্বামী স্ত্রী বাংলা চটি গল্প',
-    'hijra': 'হিজরা শীলে বাংলা চটি গল্প'
-  };
-
-  function categoryDisplayName(cat) {
-    const slug = String(cat?.slug || cat || '').toLowerCase();
-    if (CATEGORY_NAME_MAP[slug]) return CATEGORY_NAME_MAP[slug];
-
-    const name = String(cat?.name || cat || '');
-    const n = name.toLowerCase();
-    if (n.includes('অজাচার')) return 'অজাচার বাংলা চটি গল্প';
-    if (n.includes('কাজের মাসি')) return 'কাজের মাসি চোদার গল্প';
-    if (n.includes('কাজের মেয়ে') || n.includes('কাজের মেয়ে')) return 'কাজের মেয়ে চোদার গল্প';
-    if (n.includes('কুমারী')) return 'কুমারী মেয়ে চোদার গল্প';
-    if (n.includes('গৃহবধূ') || n.includes('গৃহবধু')) return 'গৃহবধূ চোদন কাহিনী';
-    if (n.includes('গে')) return 'গে সেক্স চটি';
-    if (n.includes('গ্রাম')) return 'গ্রাম সেক্সের বাংলা চটি গল্প';
-    if (n.includes('পরকীয়া') || n.includes('পরকীয়া')) return 'পরকীয়া বাংলা চটি গল্প';
-    if (n.includes('পরিপক্ক')) return 'পরিপক্ক চোদাচুদি গল্প';
-    if (n.includes('প্রতিবেশী')) return 'প্রতিবেশী চোদার চটি গল্প';
-    if (n.includes('ফেমাস')) return 'ফেমাস বাংলা চটি গল্প';
-    if (n.includes('বাবাজী') || n.includes('বাবাজি')) return 'বাবাজী চোদার বাংলা চটি গল্প';
-    if (n.includes('সমকামী')) return 'সমকামী বাংলা চটি গল্প';
-    if (n.includes('সেরা')) return 'সেরা বাংলা চটি';
-    if (n.includes('স্টুডেন্ট')) return 'স্টুডেন্ট বাংলা চটি গল্প';
-    if (n.includes('স্বামী স্ত্রী') || n.includes('স্বামী-স্ত্রী')) return 'স্বামী স্ত্রী বাংলা চটি গল্প';
-    if (n.includes('হিজরা')) return 'হিজরা শীলে বাংলা চটি গল্প';
-    return name;
-  }
 
   // ===== LOGIN =====
   async function doLogin() {
@@ -778,7 +731,7 @@
             <div class="col-thumb">${imgHtml}</div>
             <div class="col-title">
               <div class="row-title">${s.title}</div>
-              <div class="row-cats">${(s.categories || []).map(c => categoryDisplayName(c)).join(', ')}</div>
+              <div class="row-cats">${(s.categories || []).join(', ')}</div>
             </div>
             <div class="col-author">${s.author}</div>
             <div class="col-date">${date}</div>
@@ -852,12 +805,7 @@
     try {
       const res = await fetch(`${API}/api/categories`);
       const allCats = await res.json();
-      const defaults = [
-        ['ojachar','অজাচার বাংলা চটি গল্প'],['kajer-mashi','কাজের মাসি চোদার গল্প'],['kajer-meye','কাজের মেয়ে চোদার গল্প'],['kumari-meye','কুমারী মেয়ে চোদার গল্প'],['grihobodhu','গৃহবধূ চোদন কাহিনী'],['gay','গে সেক্স চটি'],['gram-sex','গ্রাম সেক্সের বাংলা চটি গল্প'],['porkiya','পরকীয়া বাংলা চটি গল্প'],['mature','পরিপক্ক চোদাচুদি গল্প'],['protibeshi','প্রতিবেশী চোদার চটি গল্প'],['famous','ফেমাস বাংলা চটি গল্প'],['babaji','বাবাজী চোদার বাংলা চটি গল্প'],['somokami','সমকামী বাংলা চটি গল্প'],['best','সেরা বাংলা চটি'],['student','স্টুডেন্ট বাংলা চটি গল্প'],['swami-stri','স্বামী স্ত্রী বাংলা চটি গল্প'],['hijra','হিজরা শীলে বাংলা চটি গল্প']
-      ];
-      const bySlug = Object.fromEntries((allCats || []).map(c => [c.slug, c]));
-      defaults.forEach(([slug,name]) => { if (!bySlug[slug]) bySlug[slug] = {slug,name,icon:'📖'}; });
-      cats = Object.values(bySlug);
+      cats = allCats;
     } catch (e) { cats = []; }
 
     let story = null;
@@ -867,12 +815,12 @@
           headers: { 'x-admin-token': token }
         });
         story = await res.json();
-        tags = story.tags || [];
+        tags = [];
       } catch (e) {}
     }
 
     const catOptions = cats.map(c =>
-      `<option value="${c.slug}" ${story && story.categories && story.categories.includes(c.slug) ? 'selected' : ''}>${categoryDisplayName(c)}</option>`
+      `<option value="${c.slug}" ${story && story.categories && story.categories.includes(c.slug) ? 'selected' : ''}>${c.icon} ${c.name}</option>`
     ).join('');
 
     mc.innerHTML = `
@@ -898,18 +846,12 @@
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group">
-            <label>বিভাগ (একাধিক বাছাই করুন)</label>
-            <select id="fCats" multiple style="height: 110px;">
+          <div class="form-group form-full">
+            <label>🏷️ ট্যাগ / বিভাগ (একাধিক বাছাই করুন)</label>
+            <select id="fCats" multiple style="height: 140px;">
               ${catOptions}
             </select>
-          </div>
-          <div class="form-group">
-            <label>ট্যাগ (Enter চাপুন)</label>
-            <div class="tags-input-wrap" onclick="document.getElementById('tagInput').focus()">
-              <div id="tagChips"></div>
-              <input type="text" class="tags-input" id="tagInput" placeholder="ট্যাগ লিখুন..." onkeydown="addTag(event)" />
-            </div>
+            <div style="font-size:12px;color:var(--text-light);margin-top:6px;">এখানে যেগুলো select করবেন, সেগুলোই Home ও গল্পের ভিতরে ট্যাগ হিসেবে দেখাবে। কোনো টেক্সট ট্যাগ আলাদা করে লিখতে হবে না।</div>
           </div>
         </div>
         <div class="form-row">
@@ -948,10 +890,6 @@
       </div>
     `;
 
-    // Render existing tags
-    if (story && story.tags) {
-      story.tags.forEach(t => renderTag(t));
-    }
   }
 
   function addTag(e) {
@@ -1003,7 +941,7 @@
     fd.append('author', document.getElementById('fAuthor').value || 'অজ্ঞাত');
     fd.append('content', content);
     fd.append('categories', JSON.stringify(selCats));
-    fd.append('tags', JSON.stringify(tags));
+    fd.append('tags', JSON.stringify([]));
     fd.append('isHot', document.getElementById('fIsHot').checked);
     fd.append('isNew', document.getElementById('fIsNew').checked);
     fd.append('status', document.getElementById('fStatus').value);
@@ -1106,7 +1044,7 @@
           ${catsData.map(c => `
             <div class="cat-item">
               <div>
-                <div class="cat-name">${categoryDisplayName(c)}</div>
+                <div class="cat-name">${c.icon} ${c.name}</div>
                 <div class="cat-slug">${c.slug}</div>
               </div>
               <button class="btn btn-danger btn-sm" onclick="deleteCategory('${c._id}')">🗑 মুছুন</button>
