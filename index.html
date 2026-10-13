@@ -765,9 +765,9 @@ firebase.initializeApp(firebaseConfig); const db=firebase.database();
 
 
   async function submitStory() {
-    const title=document.getElementById('fTitle').value.trim(),content=document.getElementById('fContent').value.trim();if(!title||!content){toast('শিরোনাম ও গল্প আবশ্যিক!',true);return;}
+    const title=document.getElementById('fTitle').value.trim(),content=document.getElementById('fContent').value.trim(),postLink=document.getElementById('fPostLink').value.trim();if(!title||!content||!postLink){toast('শিরোনাম, পোস্টের লিংক ও গল্প আবশ্যিক!',true);return;}
     const categories=Array.from(document.getElementById('fCats').selectedOptions).map(o=>o.value);const now=new Date().toISOString();
-    const story={title,author:document.getElementById('fAuthor').value.trim()||'অজ্ঞাত',content,categories,tags:[],isHot:document.getElementById('fIsHot').checked,isNew:document.getElementById('fIsNew').checked,status:document.getElementById('fStatus').value,updatedAt:now,slug:(title.toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}\s_-]/gu,'').trim().replace(/[\s-]+/g,'_').replace(/_+/g,'_')||'story')};
+    const story={title,postLink,customLink:postLink,manualLink:postLink,permalink:postLink,urlSlug:postLink,author:document.getElementById('fAuthor').value.trim()||'অজ্ঞাত',content,categories,tags:[],isHot:document.getElementById('fIsHot').checked,isNew:document.getElementById('fIsNew').checked,status:document.getElementById('fStatus').value,updatedAt:now,slug:(postLink.replace(/^https?:\/\/[^/]+/i,'').replace(/^\/+|\/+$/g,'').split('/').pop() || title.toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}\s_-]/gu,'').trim().replace(/[\s-]+/g,'_').replace(/_+/g,'_') || 'story')};
     try{if(editingId){const old=await db.ref(`stories/${editingId}`).once('value');story.createdAt=(old.val()||{}).createdAt||now;story.views=(old.val()||{}).views||0;await db.ref(`stories/${editingId}`).update(story);}else{story.createdAt=now;story.views=0;const ref=db.ref('stories').push();story._id=ref.key;await ref.set(story);}toast(editingId?'✅ গল্প আপডেট হয়েছে!':'✅ গল্প প্রকাশিত হয়েছে!');setTimeout(()=>navigate('stories'),700);}catch(e){console.error(e);toast('❌ Firebase-এ সেভ হয়নি; Database Rules পরীক্ষা করুন',true);}
   }
 
@@ -805,4 +805,4 @@ firebase.initializeApp(firebaseConfig); const db=firebase.database();
   });
 </script>
 </body>
-        </html>
+                                                                                       </html>
