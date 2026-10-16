@@ -686,7 +686,8 @@ firebase.initializeApp(firebaseConfig); const db=firebase.database();
           </div>
           <div class="form-group form-full">
             <label>🔗 পোস্টের লিংক (নিজে সেট করুন) *</label>
-            <input type="text" id="fPostLink" placeholder="যেমন: amar-bouer-porokiya-14 অথবা https://yourdomain.com/amar-bouer-porokiya-14" value="${story ? (story.postLink || story.urlSlug || story.slug || '') : ''}" />
+            <input type="text" id="fPostLink" placeholder="যেমন: amar-bouer-porokiya-14 অথবা https://yourdomain.com/amar-bouer-porokiya-14" value="${story ? (story.postLink || story.urlSlug || story.slug || '') : ''}" onblur="checkDupLink(this.value)" oninput="clearDupWarn()" />
+            <div id="dupLinkWarn" style="display:none;margin-top:8px;padding:10px 14px;background:#fff3cd;border:1.5px solid #e6a817;border-radius:8px;font-size:13px;color:#7a4f00;"></div>
             <div style="font-size:12px;color:var(--text-light);margin-top:6px;">পুরো URL অথবা শুধু শেষের slug দিন। এই লিংকেই গল্প খুলবে।</div>
           </div>
         </div>
@@ -783,10 +784,48 @@ firebase.initializeApp(firebaseConfig); const db=firebase.database();
   }
 
 
+  function clearDupWarn(){const w=document.getElementById('dupLinkWarn');if(w){w.style.display='none';w.innerHTML='';}}
+  async function checkDupLink(val){
+    const w=document.getElementById('dupLinkWarn');if(!w)return;
+    const cleanSlug=v=>{let s=String(v||'').trim();if(/^https?:\/\//i.test(s)){try{s=new URL(s).pathname;}catch(e){}}try{s=decodeURIComponent(s);}catch(e){}return s.replace(/^\/+|\/+$/g,'').toLowerCase();};
+    const mySlug=cleanSlug(val);if(!mySlug){w.style.display='none';return;}
+    try{
+      const snap=await db.ref('stories').once('value');
+      const all=snap.val()||{};
+      for(const [sid,st] of Object.entries(all)){
+        if(editingId&&sid===editingId)continue;
+        const slugs=[st.postLink,st.customLink,st.manualLink].map(cleanSlug).filter(Boolean);
+        if(slugs.includes(mySlug)){
+          w.innerHTML=`⚠️ <strong>সতর্কতা:</strong> এই লিংকে ইতিমধ্যে একটি পোস্ট আছে → <strong>"${escapeHtml(st.title||'অজ্ঞাত')}"</strong>`;
+          w.style.display='block';return;
+        }
+      }
+    }catch(e){}
+    w.style.display='none';
+  }
+
   async function submitStory() {
     const title=document.getElementById('fTitle').value.trim(),content=document.getElementById('fContent').value.trim(),postLink=document.getElementById('fPostLink').value.trim();if(!title||!content||!postLink){toast('শিরোনাম, পোস্টের লিংক ও গল্প আবশ্যিক!',true);return;}
     const categories=Array.from(document.getElementById('fCats').selectedOptions).map(o=>o.value);const now=new Date().toISOString();
     const story={title,postLink,customLink:postLink,manualLink:postLink,permalink:postLink,urlSlug:postLink,author:document.getElementById('fAuthor').value.trim()||'অজ্ঞাত',content,categories,tags:[],isHot:document.getElementById('fIsHot').checked,isNew:document.getElementById('fIsNew').checked,status:document.getElementById('fStatus').value,updatedAt:now,views:Math.max(0,parseInt(document.getElementById('fViews').value)||0),slug:(postLink.replace(/^https?:\/\/[^/]+/i,'').replace(/^\/+|\/+$/g,'').split('/').pop() || title.toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}\s_-]/gu,'').trim().replace(/[\s-]+/g,'_').replace(/_+/g,'_') || 'story')};
+    // ── Duplicate link check ──────────────────────────────────────────
+    try{
+      const cleanSlug=v=>{let s=String(v||'').trim();if(/^https?:\/\//i.test(s)){try{s=new URL(s).pathname;}catch(e){}}try{s=decodeURIComponent(s);}catch(e){}return s.replace(/^\/+|\/+$/g,'').toLowerCase();};
+      const mySlug=cleanSlug(postLink);
+      const dupSnap=await db.ref('stories').once('value');
+      const allStories=dupSnap.val()||{};
+      let dupFound=null;
+      for(const [sid,st] of Object.entries(allStories)){
+        if(editingId&&sid===editingId)continue; // skip self when editing
+        const slugs=[st.postLink,st.customLink,st.manualLink].map(cleanSlug).filter(Boolean);
+        if(slugs.includes(mySlug)){dupFound=st;break;}
+      }
+      if(dupFound){
+        const go=confirm(`⚠️ সতর্কতা!\n\nএই লিংকে ইতিমধ্যে একটি পোস্ট আছে:\n"${dupFound.title||'অজ্ঞাত'}"\n\nএই লিংকে সেভ করলে সেই পোস্টটি খুঁজে পাওয়া যাবে না।\n\nতবুও কি সেভ করতে চাও?`);
+        if(!go)return;
+      }
+    }catch(e){console.error('dupcheck',e);}
+    // ── Save ─────────────────────────────────────────────────────────
     try{if(editingId){const dateVal=document.getElementById('fDate').value;story.createdAt=dateVal?new Date(dateVal).getTime():now;await db.ref(`stories/${editingId}`).update(story);}else{const dateVal=document.getElementById('fDate').value;story.createdAt=dateVal?new Date(dateVal).getTime():now;const ref=db.ref('stories').push();story._id=ref.key;await ref.set(story);}toast(editingId?'✅ গল্প আপডেট হয়েছে!':'✅ গল্প প্রকাশিত হয়েছে!');setTimeout(()=>navigate('stories'),700);}catch(e){console.error(e);toast('❌ Firebase-এ সেভ হয়নি; Database Rules পরীক্ষা করুন',true);}
   }
 
