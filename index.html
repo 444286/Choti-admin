@@ -724,8 +724,27 @@ firebase.initializeApp(firebaseConfig); const db=firebase.database();
             </label>
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>📅 প্রকাশের তারিখ</label>
+            <input type="date" id="fDate" value="${story && story.createdAt ? new Date(story.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}" />
+            <small style="color:var(--text-light);font-size:11px">তারিখ পরিবর্তন করলে সেই অনুযায়ী দেখাবে</small>
+          </div>
+          <div class="form-group">
+            <label>👁 ভিউ কাউন্ট</label>
+            <input type="number" id="fViews" min="0" value="${story ? (story.views||0) : 0}" placeholder="0" />
+            <small style="color:var(--text-light);font-size:11px">ম্যানুয়ালি ভিউ সেট করুন</small>
+          </div>
+        </div>
+        <div class="form-row" style="display:none"><!-- placeholder --></div
+          </div>
+        </div>
         <div class="form-group">
-          <label>গল্পের বিষয়বস্তু *</label>
+          <label style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+            <span>গল্পের বিষয়বস্তু *</span>
+            <button type="button" onclick="showInsertLinkModal()" style="padding:4px 12px;font-size:12px;background:#217a47;color:#fff;border:none;border-radius:12px;cursor:pointer;font-family:inherit">🔗 গল্পের লিংক যোগ করুন</button>
+          </label>
+          <small style="color:var(--text-light);font-size:11px;display:block;margin-bottom:6px">লেখার মাঝে [[golpo-slug|গল্পের নাম]] লিখলে ক্লিকযোগ্য লিংক হবে। বা উপরের বাটনে click করুন।</small>
           <textarea id="fContent" placeholder="এখানে গল্প লিখুন... HTML ট্যাগ ব্যবহার করতে পারেন।" style="min-height: 300px;">${story ? story.content : ''}</textarea>
         </div>
         <div class="form-actions">
@@ -767,8 +786,8 @@ firebase.initializeApp(firebaseConfig); const db=firebase.database();
   async function submitStory() {
     const title=document.getElementById('fTitle').value.trim(),content=document.getElementById('fContent').value.trim(),postLink=document.getElementById('fPostLink').value.trim();if(!title||!content||!postLink){toast('শিরোনাম, পোস্টের লিংক ও গল্প আবশ্যিক!',true);return;}
     const categories=Array.from(document.getElementById('fCats').selectedOptions).map(o=>o.value);const now=new Date().toISOString();
-    const story={title,postLink,customLink:postLink,manualLink:postLink,permalink:postLink,urlSlug:postLink,author:document.getElementById('fAuthor').value.trim()||'অজ্ঞাত',content,categories,tags:[],isHot:document.getElementById('fIsHot').checked,isNew:document.getElementById('fIsNew').checked,status:document.getElementById('fStatus').value,updatedAt:now,slug:(postLink.replace(/^https?:\/\/[^/]+/i,'').replace(/^\/+|\/+$/g,'').split('/').pop() || title.toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}\s_-]/gu,'').trim().replace(/[\s-]+/g,'_').replace(/_+/g,'_') || 'story')};
-    try{if(editingId){const old=await db.ref(`stories/${editingId}`).once('value');story.createdAt=(old.val()||{}).createdAt||now;story.views=(old.val()||{}).views||0;await db.ref(`stories/${editingId}`).update(story);}else{story.createdAt=now;story.views=0;const ref=db.ref('stories').push();story._id=ref.key;await ref.set(story);}toast(editingId?'✅ গল্প আপডেট হয়েছে!':'✅ গল্প প্রকাশিত হয়েছে!');setTimeout(()=>navigate('stories'),700);}catch(e){console.error(e);toast('❌ Firebase-এ সেভ হয়নি; Database Rules পরীক্ষা করুন',true);}
+    const story={title,postLink,customLink:postLink,manualLink:postLink,permalink:postLink,urlSlug:postLink,author:document.getElementById('fAuthor').value.trim()||'অজ্ঞাত',content,categories,tags:[],isHot:document.getElementById('fIsHot').checked,isNew:document.getElementById('fIsNew').checked,status:document.getElementById('fStatus').value,updatedAt:now,views:Math.max(0,parseInt(document.getElementById('fViews').value)||0),slug:(postLink.replace(/^https?:\/\/[^/]+/i,'').replace(/^\/+|\/+$/g,'').split('/').pop() || title.toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}\s_-]/gu,'').trim().replace(/[\s-]+/g,'_').replace(/_+/g,'_') || 'story')};
+    try{if(editingId){const dateVal=document.getElementById('fDate').value;story.createdAt=dateVal?new Date(dateVal).getTime():now;await db.ref(`stories/${editingId}`).update(story);}else{const dateVal=document.getElementById('fDate').value;story.createdAt=dateVal?new Date(dateVal).getTime():now;const ref=db.ref('stories').push();story._id=ref.key;await ref.set(story);}toast(editingId?'✅ গল্প আপডেট হয়েছে!':'✅ গল্প প্রকাশিত হয়েছে!');setTimeout(()=>navigate('stories'),700);}catch(e){console.error(e);toast('❌ Firebase-এ সেভ হয়নি; Database Rules পরীক্ষা করুন',true);}
   }
 
   async function editStory(id) {
@@ -904,6 +923,63 @@ firebase.initializeApp(firebaseConfig); const db=firebase.database();
     }catch(e){
       toast('❌ মুছতে সমস্যা: '+e.message,true);
     }
+  }
+
+  // ===== INLINE STORY LINK INSERT =====
+  function showInsertLinkModal(){
+    const existing=document.getElementById('insertLinkModal');
+    if(existing)existing.remove();
+    const modal=document.createElement('div');
+    modal.id='insertLinkModal';
+    modal.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.innerHTML=`
+      <div style="background:#fff;border-radius:14px;padding:24px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)">
+        <div style="font-size:17px;font-weight:700;color:#1a5c38;margin-bottom:16px">🔗 গল্পের লিংক যোগ করুন</div>
+        <div style="margin-bottom:12px">
+          <label style="font-size:13px;color:#555;display:block;margin-bottom:4px">গল্পের নাম দিয়ে খুঁজুন</label>
+          <input type="text" id="ilSearch" placeholder="গল্পের নাম লিখুন..." style="width:100%;padding:9px 12px;border:1.5px solid #d4e8dc;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box" oninput="searchStoriesForLink(this.value)"/>
+        </div>
+        <div id="ilResults" style="max-height:220px;overflow-y:auto;border:1.5px solid #d4e8dc;border-radius:8px;margin-bottom:14px">
+          <div style="padding:16px;text-align:center;color:#888;font-size:13px">উপরে গল্পের নাম লিখুন</div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button onclick="document.getElementById('insertLinkModal').remove()" style="padding:8px 16px;border:1.5px solid #d4e8dc;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit">বাতিল</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    setTimeout(()=>document.getElementById('ilSearch').focus(),100);
+  }
+
+  let _ilTimer=null;
+  async function searchStoriesForLink(q){
+    clearTimeout(_ilTimer);
+    const res=document.getElementById('ilResults');
+    if(!q||q.trim().length<1){res.innerHTML='<div style="padding:16px;text-align:center;color:#888;font-size:13px">উপরে গল্পের নাম লিখুন</div>';return;}
+    res.innerHTML='<div style="padding:12px;text-align:center;color:#888;font-size:13px">খোঁজা হচ্ছে...</div>';
+    _ilTimer=setTimeout(async()=>{
+      try{
+        const snap=await db.ref('stories').once('value');
+        const all=Object.entries(snap.val()||{}).map(([id,s])=>({...s,_id:s._id||id}));
+        const filtered=all.filter(s=>String(s.title||'').toLowerCase().includes(q.toLowerCase())&&s.postLink).slice(0,8);
+        if(!filtered.length){res.innerHTML='<div style="padding:12px;text-align:center;color:#888;font-size:13px">কোনো গল্প পাওয়া যায়নি</div>';return;}
+        res.innerHTML=filtered.map(s=>{
+          const slug=String(s.postLink||'').replace(/^https?:\/\/[^/]+/,'').replace(/^\/+|\/+$/g,'');
+          return `<div onclick="insertStoryLink('${slug.replace(/'/g,"\'")}','${String(s.title||'').replace(/'/g,"\'")}');document.getElementById('insertLinkModal').remove()" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:14px;transition:background .15s" onmouseover="this.style.background='#f0faf5'" onmouseout="this.style.background=''">
+            <div style="font-weight:600;color:#1a5c38">${escapeHtml(s.title||'')}</div>
+            <div style="font-size:11px;color:#888;margin-top:2px">${escapeHtml(slug)}</div>
+          </div>`;
+        }).join('');
+      }catch(e){res.innerHTML='<div style="padding:12px;color:red;font-size:13px">লোড ব্যর্থ</div>';}
+    },350);
+  }
+
+  function insertStoryLink(slug,title){
+    const ta=document.getElementById('fContent');
+    if(!ta)return;
+    const linkText=`[[${slug}|${title}]]`;
+    const start=ta.selectionStart,end=ta.selectionEnd;
+    ta.value=ta.value.substring(0,start)+linkText+ta.value.substring(end);
+    ta.focus();ta.selectionStart=ta.selectionEnd=start+linkText.length;
   }
 
   // ===== INIT =====
