@@ -794,10 +794,117 @@ firebase.initializeApp(firebaseConfig); const db=firebase.database();
 
   // ===== CATEGORIES =====
   async function loadCategories() {
-    const mc=document.getElementById('mainContent');try{const snap=await db.ref('categories').once('value');const catsData=Object.entries(snap.val()||{}).map(([id,c])=>({...c,_id:c._id||id}));mc.innerHTML=`<div class="page-title">🏷️ বিভাগ ব্যবস্থাপনা</div><div class="cat-form"><div style="font-size:15px;font-weight:700;margin-bottom:14px">➕ নতুন বিভাগ যোগ করুন</div><div class="cat-form-row"><div class="form-group" style="margin:0"><label>বিভাগের নাম</label><input type="text" id="catName" placeholder="যেমন: পরকীয়া"/></div><div class="form-group" style="margin:0"><label>Slug (URL)</label><input type="text" id="catSlug" placeholder="porkiya"/></div><div class="form-group" style="margin:0"><label>Icon</label><input type="text" id="catIcon" placeholder="💜" value="📖"/></div></div><div style="margin-top:14px"><button class="btn btn-primary btn-sm" onclick="addCategory()">➕ যোগ করুন</button></div></div><div class="cat-list" id="catList">${catsData.map(c=>`<div class="cat-item"><div><div class="cat-name">${escapeHtml(c.icon||'📖')} ${escapeHtml(c.name||'')}</div><div class="cat-slug">${escapeHtml(c.slug||'')}</div></div><button class="btn btn-danger btn-sm" onclick="deleteCategory('${c._id}')">🗑 মুছুন</button></div>`).join('')||'<div style="padding:20px;text-align:center;color:var(--text-light)">কোনো বিভাগ নেই</div>'}</div>`;document.getElementById('catName').addEventListener('input',function(){document.getElementById('catSlug').value=this.value.toLowerCase().trim().replace(/\s+/g,'-').replace(/[^\w-]/g,'');});}catch(e){mc.innerHTML='<div style="padding:20px;color:red">লোড ব্যর্থ হয়েছে</div>';}}
+    const mc=document.getElementById('mainContent');
+    mc.innerHTML='<div class="spinner"></div>';
+    try{
+      const snap=await db.ref('categories').once('value');
+      const catsData=Object.entries(snap.val()||{}).map(([id,c])=>({...c,_id:c._id||id}));
+      mc.innerHTML=`
+        <div class="page-title">🏷️ বিভাগ ব্যবস্থাপনা</div>
+        <div class="cat-form">
+          <div style="font-size:15px;font-weight:700;margin-bottom:14px">➕ নতুন বিভাগ যোগ করুন</div>
+          <div class="cat-form-row">
+            <div class="form-group" style="margin:0">
+              <label>বিভাগের নাম *</label>
+              <input type="text" id="catName" placeholder="যেমন: পরকীয়া" oninput="autoSlug(this.value)"/>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Slug (URL) *</label>
+              <input type="text" id="catSlug" placeholder="porkiya"/>
+              <small style="color:var(--text-light);font-size:11px">ইংরেজিতে, ছোট হাতে, dash দিয়ে আলাদা করুন</small>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Icon (Emoji)</label>
+              <input type="text" id="catIcon" placeholder="💜" value="📖" style="width:80px"/>
+            </div>
+          </div>
+          <div style="margin-top:14px">
+            <button class="btn btn-primary btn-sm" onclick="addCategory()">➕ বিভাগ যোগ করুন</button>
+          </div>
+        </div>
+        <div class="cat-list" id="catList">
+          ${catsData.length ? catsData.map(c=>`
+            <div class="cat-item">
+              <div>
+                <div class="cat-name">${escapeHtml(c.icon||'📖')} ${escapeHtml(c.name||'')}</div>
+                <div class="cat-slug">slug: ${escapeHtml(c.slug||'')} &nbsp;|&nbsp; id: ${escapeHtml(c._id||'')}</div>
+              </div>
+              <button class="btn btn-danger btn-sm" onclick="deleteCategory('${escapeHtml(c._id)}')">🗑 মুছুন</button>
+            </div>`).join('') 
+          : '<div style="padding:20px;text-align:center;color:var(--text-light)">কোনো বিভাগ নেই — উপরে থেকে যোগ করুন</div>'}
+        </div>`;
+    }catch(e){
+      console.error('loadCategories error:',e);
+      mc.innerHTML='<div style="padding:20px;color:red">লোড ব্যর্থ হয়েছে: '+e.message+'</div>';
+    }
+  }
 
-  async function addCategory(){const name=document.getElementById('catName').value.trim(),slug=document.getElementById('catSlug').value.trim(),icon=document.getElementById('catIcon').value.trim()||'📖';if(!name||!slug){toast('নাম ও slug আবশ্যিক!',true);return;}try{const ref=db.ref('categories').push();await ref.set({name,slug,icon,_id:ref.key});toast('✅ বিভাগ যোগ হয়েছে!');loadCategories();}catch(e){toast('❌ Firebase-এ বিভাগ যোগ হয়নি',true);}}
-  async function deleteCategory(id){if(!confirm('এই বিভাগ মুছতে চান?'))return;try{await db.ref(`categories/${id}`).remove();toast('🗑 বিভাগ মুছে গেছে');loadCategories();}catch(e){toast('❌ মুছতে সমস্যা',true);}}
+  function autoSlug(name){
+    // Build a slug from the category name
+    // Keep common Bangla word mappings + fallback to transliteration index
+    const map={
+      'অ':'o','আ':'a','ই':'i','ঈ':'i','উ':'u','ঊ':'u','এ':'e','ঐ':'oi','ও':'o','ঔ':'ou',
+      'ক':'k','খ':'kh','গ':'g','ঘ':'gh','ঙ':'ng',
+      'চ':'ch','ছ':'chh','জ':'j','ঝ':'jh',
+      'ট':'t','ঠ':'th','ড':'d','ঢ':'dh','ণ':'n',
+      'ত':'t','থ':'th','দ':'d','ধ':'dh','ন':'n',
+      'প':'p','ফ':'ph','ব':'b','ভ':'bh','ম':'m',
+      'য':'y','র':'r','ল':'l','শ':'sh','ষ':'sh','স':'s','হ':'h',
+      'ড়':'r','ঢ়':'rh','য়':'y','ৎ':'t',
+      'া':'a','ি':'i','ী':'i','ু':'u','ূ':'u','ে':'e','ৈ':'oi','ো':'o','ৌ':'ou',
+      'ং':'ng','ঃ':'h','ঁ':'n','্':'',
+      'পরকীয়া':'porokiya','পরিবার':'poribar','অফিস':'office','কলেজ':'college',
+      'বৌদি':'boudi','ভাবি':'bhabi','দেবর':'debor','জোর':'jor','রোমান্স':'romance',
+      'থ্রিলার':'thriller','হরর':'horror','কমেডি':'comedy'
+    };
+    // Check full word maps first
+    let s = name.trim();
+    if(map[s]){
+      document.getElementById('catSlug').value=map[s];
+      return;
+    }
+    // Character by character
+    let slug='';
+    for(let ch of s){
+      slug+=map[ch]!==undefined?map[ch]:(/[a-z0-9]/i.test(ch)?ch.toLowerCase():'-');
+    }
+    slug=slug.replace(/-+/g,'-').replace(/^-|-$/g,'');
+    if(slug && slug!=='-') document.getElementById('catSlug').value=slug;
+  }
+
+  async function addCategory(){
+    const name=document.getElementById('catName').value.trim();
+    let slug=document.getElementById('catSlug').value.trim();
+    const icon=document.getElementById('catIcon').value.trim()||'📖';
+    if(!name){toast('বিভাগের নাম দিন!',true);return;}
+    if(!slug){toast('Slug দিন! (ইংরেজিতে)',true);return;}
+    // Sanitize slug
+    slug=slug.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'').replace(/-+/g,'-').replace(/^-|-$/g,'');
+    if(!slug){toast('Slug valid নয়! ইংরেজি অক্ষর ও dash ব্যবহার করুন।',true);return;}
+    try{
+      // Check duplicate slug
+      const existing=await db.ref('categories').orderByChild('slug').equalTo(slug).once('value');
+      if(existing.exists()){toast('এই slug ইতিমধ্যে আছে!',true);return;}
+      const ref=db.ref('categories').push();
+      await ref.set({name,slug,icon,_id:ref.key,createdAt:Date.now()});
+      toast('✅ বিভাগ যোগ হয়েছে!');
+      loadCategories();
+    }catch(e){
+      console.error('addCategory error:',e);
+      toast('❌ যোগ করা যায়নি: '+e.message,true);
+    }
+  }
+
+  async function deleteCategory(id){
+    if(!confirm('এই বিভাগ মুছতে চান? এই বিভাগের গল্পগুলো প্রভাবিত হবে না।'))return;
+    try{
+      await db.ref('categories/'+id).remove();
+      toast('🗑 বিভাগ মুছে গেছে');
+      loadCategories();
+    }catch(e){
+      toast('❌ মুছতে সমস্যা: '+e.message,true);
+    }
+  }
 
   // ===== INIT =====
   window.addEventListener('load', () => {
