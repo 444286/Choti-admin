@@ -645,7 +645,7 @@ firebase.initializeApp(firebaseConfig); const db=firebase.database();
   // ===== STORIES LIST =====
   async function loadStories(page = 1, search = '') {
     storyPage=page;storySearch=search;const mc=document.getElementById('mainContent');mc.innerHTML='<div class="spinner"></div>';
-    try{const snap=await db.ref('stories').once('value');let all=Object.entries(snap.val()||{}).map(([id,s])=>({...s,_id:s._id||id}));if(search){const q=search.toLowerCase();all=all.filter(s=>String(s.title||'').toLowerCase().includes(q)||String(s.author||'').toLowerCase().includes(q));}all.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));const total=all.length,totalPages=Math.max(1,Math.ceil(total/15));const rows=all.slice((page-1)*15,page*15).map(s=>{const date=new Date(s.createdAt||Date.now()).toLocaleDateString('bn-BD');return `<div class="table-row"><div class="col-thumb"><div class="table-thumb" style="background:#e8f5ee;border-radius:6px">📖</div></div><div class="col-title"><div class="row-title">${escapeHtml(s.title||'')}</div><div class="row-cats">${(s.categories||[]).join(', ')}</div></div><div class="col-author">${escapeHtml(s.author||'অজ্ঞাত')}</div><div class="col-date">${date}</div><div class="col-views">${(s.views||0).toLocaleString()}</div><div class="col-status"><span class="status-badge status-${s.status}">${s.status==='published'?'প্রকাশিত':'ড্রাফট'}</span></div><div class="col-actions"><button class="btn btn-blue btn-sm" onclick="editStory('${s._id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="confirmDelete('${s._id}', '${String(s.title||'').replace(/'/g,"\'")}')">🗑</button></div></div>`}).join('');let pgHtml='';if(totalPages>1)pgHtml=`<div class="admin-pagination"><button class="apg-btn" onclick="loadStories(${Math.max(1,page-1)}, '${search}')" ${page===1?'disabled':''}>← আগে</button>${Array.from({length:Math.min(totalPages,7)},(_,i)=>i+1).map(p=>`<button class="apg-btn ${p===page?'active':''}" onclick="loadStories(${p}, '${search}')">${p}</button>`).join('')}<button class="apg-btn" onclick="loadStories(${Math.min(totalPages,page+1)}, '${search}')" ${page===totalPages?'disabled':''}>পরে →</button></div>`;
+    try{const snap=await db.ref('stories').once('value');let all=Object.entries(snap.val()||{}).map(([id,s])=>({...s,_id:s._id||id}));if(search){const q=search.toLowerCase();all=all.filter(s=>String(s.title||'').toLowerCase().includes(q)||String(s.author||'').toLowerCase().includes(q));}all.sort((a,b)=>Number(b.createdOrder||new Date(b.createdAt||0).getTime())-Number(a.createdOrder||new Date(a.createdAt||0).getTime()));const total=all.length,totalPages=Math.max(1,Math.ceil(total/15));const rows=all.slice((page-1)*15,page*15).map(s=>{const date=new Date(s.createdAt||Date.now()).toLocaleDateString('bn-BD');return `<div class="table-row"><div class="col-thumb"><div class="table-thumb" style="background:#e8f5ee;border-radius:6px">📖</div></div><div class="col-title"><div class="row-title">${escapeHtml(s.title||'')}</div><div class="row-cats">${(s.categories||[]).join(', ')}</div></div><div class="col-author">${escapeHtml(s.author||'অজ্ঞাত')}</div><div class="col-date">${date}</div><div class="col-views">${(s.views||0).toLocaleString()}</div><div class="col-status"><span class="status-badge status-${s.status}">${s.status==='published'?'প্রকাশিত':'ড্রাফট'}</span></div><div class="col-actions"><button class="btn btn-blue btn-sm" onclick="editStory('${s._id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="confirmDelete('${s._id}', '${String(s.title||'').replace(/'/g,"\'")}')">🗑</button></div></div>`}).join('');let pgHtml='';if(totalPages>1)pgHtml=`<div class="admin-pagination"><button class="apg-btn" onclick="loadStories(${Math.max(1,page-1)}, '${search}')" ${page===1?'disabled':''}>← আগে</button>${Array.from({length:Math.min(totalPages,7)},(_,i)=>i+1).map(p=>`<button class="apg-btn ${p===page?'active':''}" onclick="loadStories(${p}, '${search}')">${p}</button>`).join('')}<button class="apg-btn" onclick="loadStories(${Math.min(totalPages,page+1)}, '${search}')" ${page===totalPages?'disabled':''}>পরে →</button></div>`;
       mc.innerHTML=`<div class="page-title">📖 সব গল্প</div><div class="table-header"><div style="font-size:14px;color:var(--text-light)">মোট: ${total}টি গল্প</div><div class="table-search"><input type="text" id="storySearchInput" placeholder="গল্প খুঁজুন..." value="${escapeHtml(search)}"/><button class="btn btn-primary btn-sm" onclick="loadStories(1,document.getElementById('storySearchInput').value)">🔍 খুঁজুন</button><button class="btn btn-primary btn-sm" onclick="navigate('add-story')">+ নতুন</button></div></div><div class="stories-table"><div class="table-row header-row"><div class="col-thumb">গল্প</div><div class="col-title">শিরোনাম</div><div class="col-author">লেখক</div><div class="col-date">তারিখ</div><div class="col-views">ভিউ</div><div class="col-status">অবস্থা</div><div class="col-actions">অ্যাকশন</div></div>${rows||'<div style="padding:20px;text-align:center">কোনো গল্প নেই</div>'}</div>${pgHtml}`;document.getElementById('storySearchInput').addEventListener('keydown',e=>{if(e.key==='Enter')loadStories(1,e.target.value)});
     }catch(e){console.error(e);mc.innerHTML='<div style="padding:20px;color:red">Firebase থেকে গল্প লোড হয়নি</div>';}
   }
@@ -864,6 +864,7 @@ firebase.initializeApp(firebaseConfig); const db=firebase.database();
       } else {
         const dateVal = document.getElementById('fDate').value;
         story.createdAt = dateVal ? new Date(dateVal).getTime() : now;
+        story.createdOrder = Date.now(); // Stable newest-first ordering, independent of the selected display date
         const ref = db.ref('stories').push();
         story._id = ref.key;
         await ref.set(story);
@@ -1014,6 +1015,7 @@ firebase.initializeApp(firebaseConfig); const db=firebase.database();
   }
 
   // ===== INLINE STORY LINK INSERT =====
+  let _ilStories = [];
   function showInsertLinkModal(){
     const existing=document.getElementById('insertLinkModal');
     if(existing)existing.remove();
@@ -1021,44 +1023,47 @@ firebase.initializeApp(firebaseConfig); const db=firebase.database();
     modal.id='insertLinkModal';
     modal.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px';
     modal.innerHTML=`
-      <div style="background:#fff;border-radius:14px;padding:24px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)">
+      <div style="background:#fff;border-radius:14px;padding:24px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25);max-height:85vh;display:flex;flex-direction:column">
         <div style="font-size:17px;font-weight:700;color:#1a5c38;margin-bottom:16px">🔗 গল্পের লিংক যোগ করুন</div>
         <div style="margin-bottom:12px">
-          <label style="font-size:13px;color:#555;display:block;margin-bottom:4px">গল্পের নাম দিয়ে খুঁজুন</label>
-          <input type="text" id="ilSearch" placeholder="গল্পের নাম লিখুন..." style="width:100%;padding:9px 12px;border:1.5px solid #d4e8dc;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box" oninput="searchStoriesForLink(this.value)"/>
+          <label style="font-size:13px;color:#555;display:block;margin-bottom:4px">গল্পের নাম দিয়ে খুঁজুন (ঐচ্ছিক)</label>
+          <input type="text" id="ilSearch" placeholder="গল্পের নাম লিখে ফিল্টার করুন..." style="width:100%;padding:9px 12px;border:1.5px solid #d4e8dc;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box" oninput="searchStoriesForLink(this.value)"/>
         </div>
-        <div id="ilResults" style="max-height:220px;overflow-y:auto;border:1.5px solid #d4e8dc;border-radius:8px;margin-bottom:14px">
-          <div style="padding:16px;text-align:center;color:#888;font-size:13px">উপরে গল্পের নাম লিখুন</div>
+        <div id="ilResults" style="flex:1;min-height:100px;max-height:52vh;overflow-y:auto;border:1.5px solid #d4e8dc;border-radius:8px;margin-bottom:14px">
+          <div style="padding:16px;text-align:center;color:#888;font-size:13px">সব গল্প লোড হচ্ছে...</div>
         </div>
-        <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button onclick="document.getElementById('insertLinkModal').remove()" style="padding:8px 16px;border:1.5px solid #d4e8dc;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit">বাতিল</button>
-        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end"><button onclick="document.getElementById('insertLinkModal').remove()" style="padding:8px 16px;border:1.5px solid #d4e8dc;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit">বাতিল</button></div>
       </div>`;
     document.body.appendChild(modal);
-    setTimeout(()=>document.getElementById('ilSearch').focus(),100);
+    loadStoriesForLink();
   }
 
-  let _ilTimer=null;
-  async function searchStoriesForLink(q){
-    clearTimeout(_ilTimer);
+  async function loadStoriesForLink(){
     const res=document.getElementById('ilResults');
-    if(!q||q.trim().length<1){res.innerHTML='<div style="padding:16px;text-align:center;color:#888;font-size:13px">উপরে গল্পের নাম লিখুন</div>';return;}
-    res.innerHTML='<div style="padding:12px;text-align:center;color:#888;font-size:13px">খোঁজা হচ্ছে...</div>';
-    _ilTimer=setTimeout(async()=>{
-      try{
-        const snap=await db.ref('stories').once('value');
-        const all=Object.entries(snap.val()||{}).map(([id,s])=>({...s,_id:s._id||id}));
-        const filtered=all.filter(s=>String(s.title||'').toLowerCase().includes(q.toLowerCase())&&s.postLink).slice(0,8);
-        if(!filtered.length){res.innerHTML='<div style="padding:12px;text-align:center;color:#888;font-size:13px">কোনো গল্প পাওয়া যায়নি</div>';return;}
-        res.innerHTML=filtered.map(s=>{
-          const slug=String(s.postLink||'').replace(/^https?:\/\/[^/]+/,'').replace(/^\/+|\/+$/g,'');
-          return `<div onclick="insertStoryLink('${slug.replace(/'/g,"\'")}','${String(s.title||'').replace(/'/g,"\'")}');document.getElementById('insertLinkModal').remove()" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:14px;transition:background .15s" onmouseover="this.style.background='#f0faf5'" onmouseout="this.style.background=''">
-            <div style="font-weight:600;color:#1a5c38">${escapeHtml(s.title||'')}</div>
-            <div style="font-size:11px;color:#888;margin-top:2px">${escapeHtml(slug)}</div>
-          </div>`;
-        }).join('');
-      }catch(e){res.innerHTML='<div style="padding:12px;color:red;font-size:13px">লোড ব্যর্থ</div>';}
-    },350);
+    if(!res)return;
+    try{
+      const snap=await db.ref('stories').once('value');
+      _ilStories=Object.entries(snap.val()||{}).map(([id,s])=>({...s,_id:s._id||id}))
+        .filter(s=>s.postLink && s.status!=='draft')
+        .sort((a,b)=>Number(b.createdOrder||new Date(b.createdAt||0).getTime())-Number(a.createdOrder||new Date(a.createdAt||0).getTime()));
+      renderStoriesForLink('');
+    }catch(e){res.innerHTML='<div style="padding:12px;color:red;font-size:13px">গল্প লোড করা যায়নি</div>';}
+  }
+
+  function searchStoriesForLink(q){ renderStoriesForLink(q||''); }
+  function renderStoriesForLink(q){
+    const res=document.getElementById('ilResults');
+    if(!res)return;
+    const query=String(q).trim().toLowerCase();
+    const filtered=_ilStories.filter(s=>!query||String(s.title||'').toLowerCase().includes(query));
+    if(!filtered.length){res.innerHTML='<div style="padding:12px;text-align:center;color:#888;font-size:13px">কোনো গল্প পাওয়া যায়নি</div>';return;}
+    res.innerHTML=filtered.map(s=>{
+      const slug=String(s.postLink||'').replace(/^https?:\/\/[^/]+/,'').replace(/^\/+|\/+$/g,'');
+      const safeSlug=encodeURIComponent(slug), safeTitle=encodeURIComponent(String(s.title||''));
+      return `<div onclick="insertStoryLink(decodeURIComponent('${safeSlug}'),decodeURIComponent('${safeTitle}'));document.getElementById('insertLinkModal').remove()" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:14px;transition:background .15s" onmouseover="this.style.background='#f0faf5'" onmouseout="this.style.background=''">
+        <div style="font-weight:600;color:#1a5c38">${escapeHtml(s.title||'শিরোনাম নেই')}</div><div style="font-size:11px;color:#888;margin-top:2px">${escapeHtml(slug)}</div>
+      </div>`;
+    }).join('');
   }
 
   function insertStoryLink(slug,title){
